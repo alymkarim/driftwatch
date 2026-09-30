@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Build, test, lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Build
+        run: cargo build --all-targets
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Run clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+  gating:
+    name: CI gating behaves as documented
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: An unchanged population passes
+        run: |
+          set +e
+          ./target/release/driftwatch fixtures/baseline.csv fixtures/current_clean.csv
+          code=$?
+          set -e
+          if [ "$code" -ne 0 ]; then
+            echo "expected exit 0 for an unchanged population, got $code"
+            exit 1
+          fi
+
+      - name: A drifted population blocks
+        run: |
+          set +e
+          ./target/release/driftwatch fixtures/baseline.csv fixtures/current_drifted.csv
+          code=$?
+          set -e
+          if [ "$code" -ne 2 ]; then
+            echo "expected exit 2 for a drifted population, got $code"
+            exit 1
+          fi
+          echo "drift correctly blocks the pipeline"

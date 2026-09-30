@@ -1,5 +1,7 @@
 # driftwatch
 
+[![CI](https://github.com/alymkarim/driftwatch/actions/workflows/ci.yml/badge.svg)](https://github.com/alymkarim/driftwatch/actions/workflows/ci.yml)
+
 A small tool to check if the distribution of scored features has shifted between a baseline population and a current one. It computes Population Stability Index (PSI) and the two sample Kolmogorov Smirnov statistic (KS) per feature, flags which ones need a review, and can be used to gate a model promotion in CI.
 
 ## Why
@@ -15,7 +17,17 @@ When a model is validated on a baseline set, the people or cases it scores later
 
 ## Installation
 
-Build from source with Cargo:
+Download a prebuilt binary from the releases page. Every version tag carries a build for Linux, macOS and Windows.
+
+```bash
+curl -LO https://github.com/alymkarim/driftwatch/releases/latest/download/driftwatch-linux
+chmod +x driftwatch-linux
+./driftwatch-linux baseline.csv current.csv
+```
+
+On Windows use `driftwatch-windows.exe`. No runtime, no server, no install step. It is a single file that reads two CSVs and prints a table.
+
+Or build it yourself with Cargo:
 
 ```bash
 cargo build --release

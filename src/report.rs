@@ -2,7 +2,7 @@ use std::fmt;
 use std::path::Path;
 
 use crate::dataset::Dataset;
-use crate::statistics::{ks_statistic, psi, Severity};
+use crate::statistics::{Severity, ks_statistic, psi};
 
 pub struct FeatureReport {
     pub name: String,
@@ -49,7 +49,9 @@ impl DriftReport {
     }
 
     pub fn needs_review(&self) -> bool {
-        self.features.iter().any(|f| f.severity == Severity::Significant)
+        self.features
+            .iter()
+            .any(|f| f.severity == Severity::Significant)
     }
 }
 
@@ -63,7 +65,11 @@ impl fmt::Display for DriftReport {
             .unwrap_or(4)
             .max(4);
 
-        writeln!(f, "{:<width$}  {:>7}  {:>7}  VERDICT", "FEATURE", "PSI", "KS")?;
+        writeln!(
+            f,
+            "{:<width$}  {:>7}  {:>7}  VERDICT",
+            "FEATURE", "PSI", "KS"
+        )?;
         let rule = "-".repeat(width + 30);
         writeln!(f, "{rule}")?;
 

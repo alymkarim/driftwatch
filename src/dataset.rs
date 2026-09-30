@@ -6,9 +6,20 @@ pub enum DatasetError {
     Io(std::io::Error),
     Csv(csv::Error),
     Empty,
-    RaggedRow { line: usize, expected: usize, found: usize },
-    NonNumeric { column: String, line: usize, value: String },
-    MissingColumn { name: String, available: usize },
+    RaggedRow {
+        line: usize,
+        expected: usize,
+        found: usize,
+    },
+    NonNumeric {
+        column: String,
+        line: usize,
+        value: String,
+    },
+    MissingColumn {
+        name: String,
+        available: usize,
+    },
 }
 
 impl fmt::Display for DatasetError {
@@ -17,14 +28,28 @@ impl fmt::Display for DatasetError {
             Self::Io(e) => write!(f, "could not read input: {e}"),
             Self::Csv(e) => write!(f, "malformed csv: {e}"),
             Self::Empty => write!(f, "no data rows found"),
-            Self::RaggedRow { line, expected, found } => {
+            Self::RaggedRow {
+                line,
+                expected,
+                found,
+            } => {
                 write!(f, "line {line}: expected {expected} fields, found {found}")
             }
-            Self::NonNumeric { column, line, value } => {
-                write!(f, "line {line}, column '{column}': '{value}' is not numeric")
+            Self::NonNumeric {
+                column,
+                line,
+                value,
+            } => {
+                write!(
+                    f,
+                    "line {line}, column '{column}': '{value}' is not numeric"
+                )
             }
             Self::MissingColumn { name, available } => {
-                write!(f, "column '{name}' is not in the baseline ({available} columns found)")
+                write!(
+                    f,
+                    "column '{name}' is not in the baseline ({available} columns found)"
+                )
             }
         }
     }
@@ -114,14 +139,12 @@ impl Dataset {
     /// hard error rather than a silently skipped check, since a dropped feature
     /// would quietly remove it from the drift report.
     pub fn column(&self, name: &str) -> Result<Vec<f64>, DatasetError> {
-        let idx = self
-            .header
-            .iter()
-            .position(|h| h == name)
-            .ok_or_else(|| DatasetError::MissingColumn {
+        let idx = self.header.iter().position(|h| h == name).ok_or_else(|| {
+            DatasetError::MissingColumn {
                 name: name.to_owned(),
                 available: self.header.len(),
-            })?;
+            }
+        })?;
 
         Ok(self.rows.iter().map(|row| row[idx]).collect())
     }
