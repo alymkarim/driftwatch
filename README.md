@@ -1,67 +1,74 @@
 # driftwatch
 
-Population stability checks for a scored population, written in Rust.
+A small tool to check if the distribution of scored features has shifted between a baseline population and a current one. It computes Population Stability Index (PSI) and the two sample Kolmogorov Smirnov statistic (KS) per feature, flags which ones need a review, and can be used to gate a model promotion in CI.
 
-Given the population a model was validated on and the population it has since
-scored, `driftwatch` reports how far the input distribution has moved, per
-feature, using two established measures:
+## Why
 
-- **PSI** (Population Stability Index) — the banding most credit risk teams use
-  to decide whether a shift is worth investigating.
-- **KS** (two sample Kolmogorov–Smirnov) — distribution free, so it disagrees
-  with PSI when movement is concentrated in one tail. Reporting both keeps a
-  single summary statistic from hiding that.
+When a model is validated on a baseline set, the people or cases it scores later tend to look different over time. This change, known as population drift, can erode model reliability without any code change. Driftwatch helps spot that early by comparing two CSV files before pushing a new model or continuing to score new data.
 
-## Why it is shaped like this
+## What it does
 
-- **Quantile bins, not equal width.** Equal width binning collapses on skewed
-  credit features: the bulk of a portfolio lands in one bucket and the tail,
-  where the risk lives, disappears.
-- **Outer bins are unbounded.** A current value that falls outside the baseline
-  range still lands in a bin, so genuine tail movement is counted rather than
-  silently dropped.
-- **Empty input returns `0.0`.** A partial extract should not look like an
-  emergency.
-- **Missing columns are an error.** If a feature dropped out of the scoring run
-  the report would understate the movement, so it fails loudly instead.
+* Reads two CSV files (baseline and current) with numeric features
+* Computes PSI and KS for every column that exists in the baseline
+* Ranks the largest shift and gives a clear verdict per feature (stable, moderate, or significant)
+* Exits with a non zero code when any feature shows significant drift so CI can block a promotion
+
+## Installation
+
+Build from source with Cargo:
+
+```bash
+cargo build --release
+```
+
+The binary will be at `./target/release/driftwatch`.
 
 ## Usage
 
-```console
-$ driftwatch baseline.csv current.csv
-FEATURE                  PSI       KS  VERDICT
--------------------------------------------------
-loan_amount           1.3285   0.4500  significant
-debt_to_income        7.1418   0.7700  significant
-credit_score_months   3.8405   0.7100  significant
-utilisation           9.5123   0.8750  significant
+```bash
+driftwatch <baseline.csv> <current.csv> [--bins <N>]
+```
+
+Example:
+
+```bash
+driftwatch baseline.csv current.csv --bins 10
+```
+
+## Output
+
+A simple table like:
+
+```
+FEATURE                 PSI     KS      VERDICT
+---------------------  ------  ------  ---------
+loan_amount            1.329   0.450   significant
+debt_to_income         7.142   0.770   significant
+credit_score_months    3.841   0.710   significant
+utilisation            9.512   0.875   significant
 
 largest shift: utilisation at psi 9.5123
 ```
 
-```console
-$ driftwatch baseline.csv current.csv --bins 20
-```
-
 ## Exit codes
 
-| Code | Meaning |
-| ---- | ------- |
-| `0`  | every feature stable or moderately shifted |
-| `1`  | bad input, unreadable file, or a missing column |
-| `2`  | at least one feature crossed into `significant` |
+Exit code 0 means no significant drift. Exit code 2 means at least one feature shows significant drift, so review before promotion. Exit code 1 means an input error such as a missing file, bad CSV, or non numeric values.
 
-Exit `2` is what makes this usable in CI: a model promotion can be held when the
-population it is being promoted into has moved.
+## Notes on the maths
+
+* PSI uses quantile bins (not equal width) to avoid collapsing long tails, with unbounded outer bins so out of range values are still counted.
+* KS is computed with a two pointer pass over sorted values to avoid extra allocations.
+* Severity bands follow a common credit risk convention. PSI < 0.10 is stable, 0.10 to < 0.25 is moderate, and >= 0.25 is significant.
 
 ## Development
 
-```console
-$ cargo test
-$ cargo clippy --all-targets
-$ cargo build --release
+```bash
+cargo test
+cargo clippy --all-targets
+cargo fmt --check
+cargo build --release
 ```
 
-## Licence
+## License
 
-MIT
+MIT License. See [LICENSE](LICENSE) for details.
