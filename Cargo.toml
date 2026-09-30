@@ -1,0 +1,14 @@
+[package]
+name = "driftwatch"
+version = "0.1.0"
+edition = "2024"
+description = "Population stability index and KS drift checks for scored populations"
+license = "MIT"
+
+[dependencies]
+csv = "1.3"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
